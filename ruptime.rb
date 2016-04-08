@@ -35,7 +35,6 @@ def uptime_json
   # => number of days take place of the hh:mm
   # => hh:mm gets separated into a subsequent array entry
   check_time = uptimeArray[0].split(" ")[0]
-  # puts curr_time
 
   # Get the load averages
   load_avgs = uptimeArray[-1].split(": ")[1].split(" ").map{ |i| i.to_f.to_s }
@@ -68,7 +67,8 @@ def uptime_json
     # Case where uptime exceeds 24 hours
     up_days = up_info_array[2]
   else
-    puts "We've encountered an unexpected scenario"
+    puts "We've encountered an unexpected scenario. Please email sann.c.chhan@gmail.com for assistance."
+    exit
   end
 
 
