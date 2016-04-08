@@ -90,12 +90,3 @@ end
 opt_parser.parse! 
 puts uptime_json
 uptime_json
-
-# case ARGV[0]  
-# when "uptime"  
-#   result = `uptime`
-#   # putdur_dayss ARGV[2]
-#   ARGV.each_with_index do |x, i|
-#     puts "position[#{i}]: #{x}"
-#   end
-
