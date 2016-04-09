@@ -35,36 +35,37 @@ def uptime_json(*input)
     return -1
   end
 
+  # Variables to be populated through parsing
+  up_days = 0
+  up_hours = 0
+  up_minutes = 0
+  num_users = 0
+
   begin
-    uptimeArray = uptime.chomp.split(", ")
+    # Get the load averages first. This portion of the string creates different cases between OS X and UNIX
+    load_avgs = get_load_avgs(uptime)
 
-    up_days = 0
-    up_hours = 0
-    up_minutes = 0
+    # Remove load averages from uptime result
+    uptime = uptime.split(/load/).first.strip
 
+    # Get the number of users
+    num_users = get_num_users(uptime)
+
+    # Clean up remainder of uptime output and continue parsing
+    uptimeArray = uptime.chomp.split(", ").reject { |c| c.strip.empty? }
+
+    # Get the time of check; when uptime was invoked
+    check_time = get_check_time(uptime)
+
+    # Parse data bef 
+    up_info_array = uptimeArray[0].split
+    
     # resultArray.length will change depending on the the actual uptime duration. See notes below
     # If the system has been on for longer than 24 hours:
     # => number of days take place of the hh:mm
     # => hh:mm gets separated into a subsequent array entry
-    check_time = uptimeArray[0].split(" ")[0]
 
-    # Get the load averages
-    load_avgs = uptimeArray[-1].split(": ")[1].split(" ").map{ |i| i.to_f.to_s }
-
-    # Get the number of users
-    num_users = uptimeArray[-2].split(" ")[0]
-
-  # Notes:
-  # Different cases where the units of time vary
-  # 13:10  up 13 days,  4:30, 3 users, load averages: 1.29 1.34 1.33
-  # 13:17  up 1 day, 3 mins, 4 users, load averages: 1.51 1.21 1.19
-  # 15:51  up  2:37, 3 users, load averages: 14.40 8.22 4.08
-  # 13:15  up 30 secs, 3 users, load averages: 3.89 0.96 0.35
-  # 13:15  up 1 min, 3 users, load averages: 2.60 1.06 0.42
-    up_info_array = uptimeArray[0].split(" ") # Contains uptime info until the first comma from uptime
-    
-    # uptimeArray will vary in length depending on uptime reported
-    if (uptimeArray.length == 3)
+    if (uptimeArray.length == 2)
       # Case uptime has not exceeded 24 hours / 1 day
       if (up_info_array.find { |e| /min/ =~ e }) 
       # Only minutes have been outputted.
@@ -78,7 +79,7 @@ def uptime_json(*input)
         up_minutes = up_info_array[2].split(":")[1]
       end
 
-    elsif (uptimeArray.length == 4)
+    elsif (uptimeArray.length == 3)
       # Case where uptime exceeds 24 hours
       up_days = up_info_array[2]
 
@@ -88,17 +89,12 @@ def uptime_json(*input)
       elsif (uptimeArray[1].split.find{ |e| /min/ =~ e })
         up_minutes = uptimeArray[1].split(" ")[0]
       end
-
     end
-  rescue Exception => e
-    # puts "Please email sann.c.chhan@gmail.com for assistance."
-    # puts "Please include the following in the mail body: "
-    # puts
-    puts "contents of uptime: #{uptime}"
-    # puts
+
+  rescue
+    puts "something happened"
     return -1
   end
-
     # Create the JSON with a heredoc
     json = <<EOS
 {
@@ -112,6 +108,23 @@ def uptime_json(*input)
 EOS
    
     json
+end
+
+def get_check_time(string)
+  # string typical format: "16:29:43 up 23 days, 7:28, 1 user,"
+  string.split(" ")[0]
+end
+
+def get_num_users(string)
+  # string typical format: "16:29:43 up 23 days, 7:28, 1 user,"
+  string.split(',').map{ |x| x.strip }[-1].split(" ")[0]
+end
+
+def get_load_avgs(string)
+  # string typical format:
+  # => 16:29:43 up 23 days, 7:28, 1 user, load average: 0.13, 0.13, 0.14 (UNIX, note presence of commas in load avgs)
+  # => 16:45 up 1 day, 3:31, 4 users, load averages: 2.69 7.92 5.87 (OS X, note lack of commas in load avgs)
+  string[string.index('load')..-1].gsub(',', ' ').split(" ").map{ |i| i.to_f.to_s }[2..-1]
 end
 
 opt_parser.parse! 
