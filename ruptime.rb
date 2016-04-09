@@ -51,13 +51,13 @@ def uptime_json(*input)
     # Get the number of users
     num_users = get_num_users(uptime)
 
-    # Clean up remainder of uptime output and continue parsing
+    # Cleave up remainder of uptime output and continue parsing
     uptimeArray = uptime.chomp.split(", ").reject { |c| c.strip.empty? }
 
     # Get the time of check; when uptime was invoked
     check_time = get_check_time(uptime)
 
-    # Parse data bef 
+    # Split data before sending off for more parsing. Simpler string to parse through.
     up_info_array = uptimeArray[0].split
     
     # resultArray.length will change depending on the the actual uptime duration. See notes below
@@ -112,7 +112,8 @@ end
 
 def get_check_time(string)
   # string typical format: "16:29:43 up 23 days, 7:28, 1 user,"
-  string.split(" ")[0]
+  # Format of string should be such that it is the first entry from an `uptime` invoke.
+  string.split("up").map { |x| x.strip }[0]
 end
 
 def get_num_users(string)
