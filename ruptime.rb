@@ -57,42 +57,20 @@ def uptime_json(*input)
     # Get the time of check; when uptime was invoked
     check_time = get_check_time(uptime)
 
-    # Split data before sending off for more parsing. Simpler string to parse through.
-    up_info_array = uptimeArray[0].split
-    
-    # resultArray.length will change depending on the the actual uptime duration. See notes below
-    # If the system has been on for longer than 24 hours:
-    # => number of days take place of the hh:mm
-    # => hh:mm gets separated into a subsequent array entry
+    # Get the quantity of time system has been up
+    qty_uptime = get_uptime_qty(uptime)
 
-    if (uptimeArray.length == 2)
-      # Case uptime has not exceeded 24 hours / 1 day
-      if (up_info_array.find { |e| /min/ =~ e }) 
-      # Only minutes have been outputted.
-        up_minutes = up_info_array[-2]
-      elsif (up_info_array.find { |e| /sec/ =~ e })  
-      # Corner case where uptime is executed before minute mark
-      # Round uptime to 1 minute. We can update this if greater granularity is required for seconds
-        up_minutes = 1 
-      else # up_info_array contains uptime in hours and minutes outputted as hh:mm
-        up_hours = up_info_array[2].split(":")[0]
-        up_minutes = up_info_array[2].split(":")[1]
-      end
+    # Parse qty_uptime for granularity
+    uptime_hash = parse_uptime_qty(qty_uptime)
 
-    elsif (uptimeArray.length == 3)
-      # Case where uptime exceeds 24 hours
-      up_days = up_info_array[2]
-
-      if (uptimeArray[1].split.find{ |e| /:/ =~ e })
-        up_hours = uptimeArray[1].split(":")[0].strip
-        up_minutes = uptimeArray[1].split(":")[1].strip
-      elsif (uptimeArray[1].split.find{ |e| /min/ =~ e })
-        up_minutes = uptimeArray[1].split(" ")[0]
-      end
-    end
+    # Populate proper variables from uptime_hash
+    up_days = uptime_hash[:days]
+    up_hours = uptime_hash[:hours]
+    up_minutes = uptime_hash[:minutes]
 
   rescue
-    puts "something happened"
+    puts "Uptime output may not have been formatted in an expected manner"
+    puts "uptime: #{uptime}"
     return -1
   end
     # Create the JSON with a heredoc
@@ -126,6 +104,59 @@ def get_load_avgs(string)
   # => 16:29:43 up 23 days, 7:28, 1 user, load average: 0.13, 0.13, 0.14 (UNIX, note presence of commas in load avgs)
   # => 16:45 up 1 day, 3:31, 4 users, load averages: 2.69 7.92 5.87 (OS X, note lack of commas in load avgs)
   string[string.index('load')..-1].gsub(',', ' ').split(" ").map{ |i| i.to_f.to_s }[2..-1]
+end
+
+def get_uptime_qty(string)
+  # string typical format:
+  # => 16:29:43 up 23 days, 7:28, 1 user, load average: 0.13, 0.13, 0.14
+  regexp_num_users = /[\d]*\suser[s]?,/
+
+  left_boundary = string.index('up') + 'up '.length
+  right_boundary = string.index(regexp_num_users) - 3
+
+  # puts string[left_boundary..right_boundary]
+  string[left_boundary..right_boundary].strip  
+end
+
+# Parses the input string into granules of time
+def parse_uptime_qty(string)
+  # string typical format: 23 days, 7:28
+  result = {}
+
+  # Parse for the number of days
+  if (string =~ /day[s]?/)
+    result[:days] = string.split(/day[s]/)[0].strip
+  else
+    result[:days] = "0"
+  end
+
+  # Look for presence of hh:mm pattern
+  clock_time_index = string =~ /[\d]+:[\d]+/
+  if (clock_time_index)
+    clock_time = string[clock_time_index..-1]
+
+    result[:hours] = clock_time.split(":")[0]
+    result[:minutes] = clock_time.split(":")[1]
+  else
+    result[:hours] = "0"
+  end
+
+  # string = string.split(", ")[1]
+
+  min_time_index = string =~ /[\d]+\smin[s]?/
+  if (min_time_index)
+    string = string[min_time_index..-1]
+    string = string.split(" ")[0]
+
+    result[:minutes] = string
+  end
+
+  sec_time_index = string =~ /[\d]+\ssec[s]?/
+  if (sec_time_index)
+    result[:minutes] = "1"
+  end
+
+  result
 end
 
 opt_parser.parse! 
